@@ -291,6 +291,14 @@ static bool isSimpleCountedLoop(CompilationUnit *cUnit)
     return true;
 }
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) bool updateRangeCheckInfoOpt(CompilationUnit *cUnit, int arrayReg,
+                                 int idxReg)
+{
+    return false;
+}
+#endif
+
 /*
  * Record the upper and lower bound information for range checks for each
  * induction variable. If array A is accessed by index "i+5", the upper and
@@ -299,6 +307,10 @@ static bool isSimpleCountedLoop(CompilationUnit *cUnit)
 static void updateRangeCheckInfo(CompilationUnit *cUnit, int arrayReg,
                                  int idxReg)
 {
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt && updateRangeCheckInfoOpt(cUnit, arrayReg, idxReg))
+        return;
+#endif
     InductionVariableInfo *ivInfo;
     LoopAnalysis *loopAnalysis = cUnit->loopAnalysis;
     unsigned int i, j;
@@ -426,8 +438,19 @@ static bool doLoopBodyCodeMotion(CompilationUnit *cUnit)
     return !loopBodyCanThrow;
 }
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) bool genHoistedChecksOpt(CompilationUnit *cUnit)
+{
+    return false;
+}
+#endif
+
 static void genHoistedChecks(CompilationUnit *cUnit)
 {
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt && genHoistedChecksOpt(cUnit))
+        return;
+#endif
     unsigned int i;
     BasicBlock *entry = cUnit->entryBlock;
     LoopAnalysis *loopAnalysis = cUnit->loopAnalysis;

@@ -316,6 +316,9 @@ typedef enum ArmConditionCode {
  * Assemble.c.
  */
 typedef enum ArmOpcode {
+#ifdef SWE_DVM_OPT
+    kArmPseudoBackEndOptTargetLabel = -19,
+#endif
     kArmChainingCellBottom = -18,
     kArmPseudoBarrier = -17,
     kArmPseudoExtended = -16,
@@ -613,8 +616,18 @@ typedef enum ArmOpcode {
                                   [10110000] imm4l[3-0] */
     kThumb2Mla,          /* mla [111110110000] rn[19-16] ra[15-12] rd[7-4]
                                   [0000] rm[3-0] */
+#ifdef __ARM_ARCH_EXT_IDIV__
+    kThumb2MlsRRRR,      /* mls [1111101110000] rn[19-16] ra[15-12] rd[11-8]
+                                  [0001] rm[3-0] */
+#endif
     kThumb2Umull,        /* umull [111110111010] rn[19-16], rdlo[15-12]
                                   rdhi[11-8] [0000] rm[3-0] */
+#ifdef __ARM_ARCH_EXT_IDIV__
+    kThumb2SdivRRR,      /* sdiv [1111101111001 rn[19-16] [1111] rd[11-8]
+                                  [1111] rm[3-0] */
+    kThumb2UdivRRR,      /* udiv [1111101111011 rn[19-16] [1111] rd[11-8]
+                                  [1111] rm[3-0] */
+#endif
     kThumb2Ldrex,        /* ldrex [111010000101] rn[19-16] rt[11-8] [1111]
                                   imm8[7-0] */
     kThumb2Strex,        /* strex [111010000100] rn[19-16] rt[11-8] rd[11-8]
@@ -627,6 +640,9 @@ typedef enum ArmOpcode {
     kThumb2Dmb,          /* dmb [1111001110111111100011110101] option[3-0] */
     kThumb2LdrPcReln12,  /* ldr rd,[pc,-#imm12] [1111100011011111] rt[15-12]
                                   imm12[11-0] */
+#ifdef SWE_DVM_OPT
+    kThumb2Pld,          /* pld i[111110001001] Rn[19-16] 1111 imm12[11-0]*/
+#endif
     kThumb2RsbRRR,       /* rsb [111010111101] rn[19..16] [0000] rd[11..8]
                                   [0000] rm[3..0] */
     kThumbUndefined,     /* undefined [11011110xxxxxxxx] */

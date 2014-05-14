@@ -132,6 +132,10 @@ static int modifiedImmediate(u4 value)
    return value | ((0x8 + zLeading) << 7); /* [01000..11111]:bcdefgh */
 }
 
+#ifdef SWE_DVM_OPT
+static ArmLIR *opRegImm(CompilationUnit *cUnit, OpKind op, int rDestSrc1,
+                        int value);
+#endif
 /*
  * Load a immediate using a shortcut if possible; otherwise
  * grab from the per-translation literal pool.
@@ -352,6 +356,12 @@ static ArmLIR *opRegRegShift(CompilationUnit *cUnit, OpKind op, int rDestSrc1,
             assert(shift == 0);
             opcode = (thumbForm) ? kThumbMul : kThumb2MulRRR;
             break;
+#ifdef __ARM_ARCH_EXT_IDIV__
+        case kOpDiv:
+            assert(shift == 0);
+            opcode = kThumb2SdivRRR;
+            break;
+#endif
         case kOpMvn:
             opcode = (thumbForm) ? kThumbMvn : kThumb2MnvRR;
             break;
@@ -454,6 +464,15 @@ static ArmLIR *opRegRegRegShift(CompilationUnit *cUnit, OpKind op,
             assert(shift == 0);
             opcode = kThumb2MulRRR;
             break;
+#ifdef __ARM_ARCH_EXT_IDIV__
+        case kOpDiv:
+            assert(shift == 0);
+            opcode = kThumb2SdivRRR;
+            break;
+        case kOpRem:
+            opcode = kThumb2MlsRRRR;
+            break;
+#endif
         case kOpOr:
             opcode = kThumb2OrrRRR;
             break;
@@ -494,6 +513,14 @@ static ArmLIR *opRegRegReg(CompilationUnit *cUnit, OpKind op, int rDest,
 {
     return opRegRegRegShift(cUnit, op, rDest, rSrc1, rSrc2, 0);
 }
+
+#ifdef __ARM_ARCH_EXT_IDIV__
+static ArmLIR *opRegRegRegReg(CompilationUnit *cUnit, OpKind op, int rDest,
+                           int rSrc1, int rSrc2, int rSrc3)
+{
+    return opRegRegRegShift(cUnit, op, rDest, rSrc1, rSrc2, rSrc3);
+}
+#endif
 
 static ArmLIR *opRegRegImm(CompilationUnit *cUnit, OpKind op, int rDest,
                            int rSrc1, int value)
@@ -586,6 +613,12 @@ static ArmLIR *opRegRegImm(CompilationUnit *cUnit, OpKind op, int rDest,
             modImm = -1;
             altOpcode = kThumb2MulRRR;
             break;
+#ifdef __ARM_ARCH_EXT_IDIV__
+        case kOpDiv:
+            modImm = -1;
+            altOpcode = kThumb2SdivRRR;
+            break;
+#endif
         case kOpCmp: {
             int modImm = modifiedImmediate(value);
             ArmLIR *res;
@@ -1148,6 +1181,17 @@ static ArmLIR *storeMultiple(CompilationUnit *cUnit, int rBase, int rMask)
     return res;
 }
 
+#ifdef SWE_DVM_OPT
+static void storePair(CompilationUnit *cUnit, int base, int lowReg, int highReg, int displacement = 0)
+{
+    storeBaseDispWide(cUnit, base, displacement, lowReg, highReg);
+}
+
+static void loadPair(CompilationUnit *cUnit, int base, int lowReg, int highReg, int displacement = 0)
+{
+    loadBaseDispWide(cUnit, NULL, base, displacement, lowReg, highReg, INVALID_SREG);
+}
+#else
 static void storePair(CompilationUnit *cUnit, int base, int lowReg, int highReg)
 {
     storeBaseDispWide(cUnit, base, 0, lowReg, highReg);
@@ -1157,6 +1201,7 @@ static void loadPair(CompilationUnit *cUnit, int base, int lowReg, int highReg)
 {
     loadBaseDispWide(cUnit, NULL, base, 0, lowReg, highReg, INVALID_SREG);
 }
+#endif
 
 /*
  * Generate a register comparison to an immediate and branch.  Caller

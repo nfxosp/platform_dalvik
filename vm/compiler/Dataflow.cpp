@@ -1416,9 +1416,24 @@ bool dvmCompilerDoConstantPropagation(CompilationUnit *cUnit, BasicBlock *bb)
     return true;
 }
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) bool dvmCompilerFindInductionVariablesOpt(struct CompilationUnit *cUnit,
+                                       struct BasicBlock *bb)
+{
+    return false;
+}
+#endif
+
 bool dvmCompilerFindInductionVariables(struct CompilationUnit *cUnit,
                                        struct BasicBlock *bb)
 {
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt) {
+        bool ret = dvmCompilerFindInductionVariablesOpt(cUnit, bb);
+        if (ret)
+            return true;
+    }
+#endif
     BitVector *isIndVarV = cUnit->loopAnalysis->isIndVarV;
     BitVector *isConstantV = cUnit->isConstantV;
     GrowableList *ivList = cUnit->loopAnalysis->ivList;

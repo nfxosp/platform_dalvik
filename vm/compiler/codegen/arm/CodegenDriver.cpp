@@ -398,6 +398,14 @@ static void genIPut(CompilationUnit *cUnit, MIR *mir, OpSize size,
     }
 }
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) bool genArrayGetOpt(CompilationUnit *cUnit, MIR *mir, OpSize size,
+                                          RegLocation rlArray, RegLocation rlIndex,
+                                          RegLocation rlDest, int scale)
+{
+    return false;
+}
+#endif
 
 /*
  * Generate array load
@@ -406,6 +414,10 @@ static void genArrayGet(CompilationUnit *cUnit, MIR *mir, OpSize size,
                         RegLocation rlArray, RegLocation rlIndex,
                         RegLocation rlDest, int scale)
 {
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt && genArrayGetOpt(cUnit, mir, size, rlArray, rlIndex, rlDest, scale))
+        return;
+#endif
     RegisterClass regClass = dvmCompilerRegClassBySize(size);
     int lenOffset = OFFSETOF_MEMBER(ArrayObject, length);
     int dataOffset = OFFSETOF_MEMBER(ArrayObject, contents);
@@ -467,6 +479,15 @@ static void genArrayGet(CompilationUnit *cUnit, MIR *mir, OpSize size,
     }
 }
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) bool genArrayPutOpt(CompilationUnit *cUnit, MIR *mir, OpSize size,
+                                          RegLocation rlArray, RegLocation rlIndex,
+                                          RegLocation rlSrc, int scale)
+{
+    return false;
+}
+#endif
+
 /*
  * Generate array store
  *
@@ -475,6 +496,10 @@ static void genArrayPut(CompilationUnit *cUnit, MIR *mir, OpSize size,
                         RegLocation rlArray, RegLocation rlIndex,
                         RegLocation rlSrc, int scale)
 {
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt && genArrayPutOpt(cUnit, mir, size, rlArray, rlIndex, rlSrc, scale))
+        return;
+#endif
     RegisterClass regClass = dvmCompilerRegClassBySize(size);
     int lenOffset = OFFSETOF_MEMBER(ArrayObject, length);
     int dataOffset = OFFSETOF_MEMBER(ArrayObject, contents);
@@ -783,6 +808,9 @@ static bool genArithOpInt(CompilationUnit *cUnit, MIR *mir,
     int (*callTgt)(int, int);
     RegLocation rlResult;
     bool shiftOp = false;
+#ifdef __ARM_ARCH_EXT_IDIV__
+    bool remOp = false;
+#endif
 
     switch (mir->dalvikInsn.opcode) {
         case OP_NEG_INT:
@@ -807,18 +835,27 @@ static bool genArithOpInt(CompilationUnit *cUnit, MIR *mir,
             break;
         case OP_DIV_INT:
         case OP_DIV_INT_2ADDR:
+#ifdef __ARM_ARCH_EXT_IDIV__
+            op = kOpDiv;
+#else
             callOut = true;
-            checkZero = true;
             callTgt = __aeabi_idiv;
             retReg = r0;
+#endif
+            checkZero = true;
             break;
         /* NOTE: returns in r1 */
         case OP_REM_INT:
         case OP_REM_INT_2ADDR:
+#ifdef __ARM_ARCH_EXT_IDIV__
+            op = kOpRem;
+            remOp = true;
+#else
             callOut = true;
-            checkZero = true;
             callTgt = __aeabi_idivmod;
             retReg = r1;
+#endif
+            checkZero = true;
             break;
         case OP_AND_INT:
         case OP_AND_INT_2ADDR:
@@ -860,6 +897,11 @@ static bool genArithOpInt(CompilationUnit *cUnit, MIR *mir,
                      rlSrc1.lowReg);
         } else {
             rlSrc2 = loadValue(cUnit, rlSrc2, kCoreReg);
+#ifdef __ARM_ARCH_EXT_IDIV__
+            if (checkZero) {
+                genNullCheck(cUnit, rlSrc2.sRegLow, r1, mir->offset, NULL);
+            }
+#endif
             if (shiftOp) {
                 int tReg = dvmCompilerAllocTemp(cUnit);
                 opRegRegImm(cUnit, kOpAnd, tReg, rlSrc2.lowReg, 31);
@@ -867,6 +909,16 @@ static bool genArithOpInt(CompilationUnit *cUnit, MIR *mir,
                 opRegRegReg(cUnit, op, rlResult.lowReg,
                             rlSrc1.lowReg, tReg);
                 dvmCompilerFreeTemp(cUnit, tReg);
+#ifdef __ARM_ARCH_EXT_IDIV__
+            } else if (remOp) {
+                int tReg = dvmCompilerAllocTemp(cUnit);
+                opRegRegReg(cUnit, kOpDiv, tReg,
+                            rlSrc1.lowReg, rlSrc2.lowReg);
+                rlResult = dvmCompilerEvalLoc(cUnit, rlDest, kCoreReg, true);
+                opRegRegRegReg(cUnit, op, rlResult.lowReg,
+                               rlSrc2.lowReg, tReg, rlSrc1.lowReg);
+                dvmCompilerFreeTemp(cUnit, tReg);
+#endif
             } else {
                 rlResult = dvmCompilerEvalLoc(cUnit, rlDest, kCoreReg, true);
                 opRegRegReg(cUnit, op, rlResult.lowReg,
@@ -1434,12 +1486,24 @@ static void genMonitorPortable(CompilationUnit *cUnit, MIR *mir)
 }
 #endif
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) bool genSuspendPollOpt(CompilationUnit *cUnit, MIR *mir)
+{
+    return false;
+}
+#endif
+
 /*
  * Fetch *self->info.breakFlags. If the breakFlags are non-zero,
  * punt to the interpreter.
  */
 static void genSuspendPoll(CompilationUnit *cUnit, MIR *mir)
 {
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt && genSuspendPollOpt(cUnit, mir))
+        return;
+#endif
+
     int rTemp = dvmCompilerAllocTemp(cUnit);
     ArmLIR *ld;
     ld = loadBaseDisp(cUnit, NULL, r6SELF,
@@ -2170,6 +2234,14 @@ static int lowestSetBit(unsigned int x) {
     return bit_posn;
 }
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) bool handleEasyDivideOpt(CompilationUnit *cUnit, Opcode dalvikOpcode,
+                                               RegLocation rlSrc, RegLocation rlDest, int lit, int k)
+{
+    return false;
+}
+#endif
+
 // Returns true if it added instructions to 'cUnit' to divide 'rlSrc' by 'lit'
 // and store the result in 'rlDest'.
 static bool handleEasyDivide(CompilationUnit *cUnit, Opcode dalvikOpcode,
@@ -2183,6 +2255,11 @@ static bool handleEasyDivide(CompilationUnit *cUnit, Opcode dalvikOpcode,
         // Avoid special cases.
         return false;
     }
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt && handleEasyDivideOpt(cUnit, dalvikOpcode, rlSrc, rlDest, lit, k))
+        return true;
+#endif
+
     bool div = (dalvikOpcode == OP_DIV_INT_LIT8 || dalvikOpcode == OP_DIV_INT_LIT16);
     rlSrc = loadValue(cUnit, rlSrc, kCoreReg);
     RegLocation rlResult = dvmCompilerEvalLoc(cUnit, rlDest, kCoreReg, true);
@@ -2273,6 +2350,9 @@ static bool handleFmt22b_Fmt22s(CompilationUnit *cUnit, MIR *mir)
     OpKind op = (OpKind)0;      /* Make gcc happy */
     int shiftOp = false;
     bool isDiv = false;
+#ifdef __ARM_ARCH_EXT_IDIV__
+    bool isRem = false;
+#endif
 
     switch (dalvikOpcode) {
         case OP_RSUB_INT_LIT8:
@@ -2339,9 +2419,20 @@ static bool handleFmt22b_Fmt22s(CompilationUnit *cUnit, MIR *mir)
                 genInterpSingleStep(cUnit, mir);
                 return false;
             }
+            /* can remove easy divide - should be faster than sdiv(19 cycles) */
             if (handleEasyDivide(cUnit, dalvikOpcode, rlSrc, rlDest, lit)) {
                 return false;
             }
+#ifdef __ARM_ARCH_EXT_IDIV__
+            if ((dalvikOpcode == OP_DIV_INT_LIT8) ||
+                (dalvikOpcode == OP_DIV_INT_LIT16)) {
+                op = kOpDiv;
+            } else {
+                isRem = true;
+                op = kOpRem;
+            }
+            break;
+#endif
             dvmCompilerFlushAllRegs(cUnit);   /* Everything to home location */
             loadValueDirectFixed(cUnit, rlSrc, r0);
             dvmCompilerClobber(cUnit, r0);
@@ -2371,6 +2462,17 @@ static bool handleFmt22b_Fmt22s(CompilationUnit *cUnit, MIR *mir)
     // Avoid shifts by literal 0 - no support in Thumb.  Change to copy
     if (shiftOp && (lit == 0)) {
         genRegCopy(cUnit, rlResult.lowReg, rlSrc.lowReg);
+#ifdef __ARM_ARCH_EXT_IDIV__
+    } else if (isRem) {
+        int tReg1 = dvmCompilerAllocTemp(cUnit);
+        int tReg2 = dvmCompilerAllocTemp(cUnit);
+
+        loadConstant(cUnit, tReg2, lit);
+        opRegRegReg(cUnit, kOpDiv, tReg1, rlSrc.lowReg, tReg2);
+        opRegRegRegReg(cUnit, op, rlResult.lowReg, tReg2, tReg1, rlSrc.lowReg);
+        dvmCompilerFreeTemp(cUnit, tReg1);
+        dvmCompilerFreeTemp(cUnit, tReg2);
+#endif
     } else {
         opRegRegImm(cUnit, op, rlResult.lowReg, rlSrc.lowReg, lit);
     }
@@ -3859,6 +3961,13 @@ static const char *extendedMIROpNames[kMirOpLast - kMirOpFirst] = {
     "kMirOpCheckInlinePrediction",
 };
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) bool genHoistedChecksForCountUpLoopOpt(CompilationUnit *cUnit, MIR *mir)
+{
+    return false;
+}
+#endif
+
 /*
  * vA = arrayReg;
  * vB = idxReg;
@@ -3869,6 +3978,10 @@ static const char *extendedMIROpNames[kMirOpLast - kMirOpFirst] = {
  */
 static void genHoistedChecksForCountUpLoop(CompilationUnit *cUnit, MIR *mir)
 {
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt && genHoistedChecksForCountUpLoopOpt(cUnit, mir))
+        return;
+#endif
     /*
      * NOTE: these synthesized blocks don't have ssa names assigned
      * for Dalvik registers.  However, because they dominate the following
@@ -3912,6 +4025,13 @@ static void genHoistedChecksForCountUpLoop(CompilationUnit *cUnit, MIR *mir)
                    (ArmLIR *) cUnit->loopAnalysis->branchToPCR);
 }
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) bool genHoistedChecksForCountDownLoopOpt(CompilationUnit *cUnit, MIR *mir)
+{
+    return false;
+}
+#endif
+
 /*
  * vA = arrayReg;
  * vB = idxReg;
@@ -3922,6 +4042,10 @@ static void genHoistedChecksForCountUpLoop(CompilationUnit *cUnit, MIR *mir)
  */
 static void genHoistedChecksForCountDownLoop(CompilationUnit *cUnit, MIR *mir)
 {
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt && genHoistedChecksForCountDownLoopOpt(cUnit, mir))
+        return;
+#endif
     DecodedInstruction *dInsn = &mir->dalvikInsn;
     const int lenOffset = OFFSETOF_MEMBER(ArrayObject, length);
     const int regLength = dvmCompilerAllocTemp(cUnit);
@@ -3950,12 +4074,24 @@ static void genHoistedChecksForCountDownLoop(CompilationUnit *cUnit, MIR *mir)
                    (ArmLIR *) cUnit->loopAnalysis->branchToPCR);
 }
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) bool genHoistedLowerBoundCheckOpt(CompilationUnit *cUnit, MIR *mir)
+{
+    return false;
+}
+#endif
+
 /*
  * vA = idxReg;
  * vB = minC;
  */
 static void genHoistedLowerBoundCheck(CompilationUnit *cUnit, MIR *mir)
 {
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt && genHoistedLowerBoundCheckOpt(cUnit, mir))
+        return;
+#endif
+
     DecodedInstruction *dInsn = &mir->dalvikInsn;
     const int minC = dInsn->vB;
     RegLocation rlIdx = cUnit->regLocation[mir->dalvikInsn.vA];
@@ -4176,6 +4312,23 @@ static bool selfVerificationPuntOps(MIR *mir)
 }
 #endif
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) void dvmCompilerApplyBackEndOptimizations(CompilationUnit *cUnit)
+{
+    return;
+}
+
+__attribute__((weak)) void checkSameArray(CompilationUnit *cUnit, MIR *mir)
+{
+    return;
+}
+
+__attribute__((weak)) bool checkArrayAccess(MIR *mir)
+{
+    return false;
+}
+#endif
+
 void dvmCompilerMIR2LIR(CompilationUnit *cUnit)
 {
     /* Used to hold the labels of each block */
@@ -4237,6 +4390,11 @@ void dvmCompilerMIR2LIR(CompilationUnit *cUnit)
         } else if (bb->blockType == kDalvikByteCode) {
             if (bb->hidden == true) continue;
             labelList[i].opcode = kArmPseudoNormalBlockLabel;
+#ifdef SWE_DVM_OPT
+            if (cUnit->backEndOptInfo.normalCodeBlockStartLIRInsn == NULL)
+                cUnit->backEndOptInfo.normalCodeBlockStartLIRInsn = (LIR *) &labelList[i];
+            cUnit->backEndOptInfo.normalCodeBlockCount++;
+#endif
             /* Reset the register state */
             dvmCompilerResetRegPool(cUnit);
             dvmCompilerClobberAllRegs(cUnit);
@@ -4245,6 +4403,9 @@ void dvmCompilerMIR2LIR(CompilationUnit *cUnit)
             switch (bb->blockType) {
                 case kChainingCellNormal:
                     labelList[i].opcode = kArmPseudoChainingCellNormal;
+#ifdef SWE_DVM_OPT
+                    cUnit->backEndOptInfo.normalChainningBlockCount++;
+#endif
                     /* handle the codegen later */
                     dvmInsertGrowableList(
                         &chainingListByType[kChainingCellNormal], i);
@@ -4321,6 +4482,10 @@ void dvmCompilerMIR2LIR(CompilationUnit *cUnit)
 
             for (mir = bb->firstMIRInsn; mir; mir = mir->next) {
 
+#ifdef SWE_DVM_OPT
+                if(gDvmJit.jitOpt && (mir->duplicated == false) && checkArrayAccess(mir))
+                    checkSameArray(cUnit, mir);
+#endif
                 dvmCompilerResetRegPool(cUnit);
                 if (gDvmJit.disableOpt & (1 << kTrackLiveTemps)) {
                     dvmCompilerClobberAllRegs(cUnit);
@@ -4487,7 +4652,9 @@ void dvmCompilerMIR2LIR(CompilationUnit *cUnit)
                 }
             }
         }
-
+#ifdef SWE_DVM_OPT
+        cUnit->backEndOptInfo.normalCodeBlockEndLIRInsn = cUnit->lastLIRInsn;
+#endif
         if (bb->blockType == kEntryBlock) {
             dvmCompilerAppendLIR(cUnit,
                                  (LIR *) cUnit->loopAnalysis->branchToBody);
@@ -4513,6 +4680,9 @@ gen_fallthrough:
          */
         if (bb->needFallThroughBranch) {
             genUnconditionalBranch(cUnit, &labelList[bb->fallThrough->id]);
+#ifdef SWE_DVM_OPT
+            cUnit->backEndOptInfo.normalCodeBlockEndLIRInsn = cUnit->lastLIRInsn;
+#endif
         }
     }
 
@@ -4588,6 +4758,11 @@ gen_fallthrough:
     }
 
     dvmCompilerApplyGlobalOptimizations(cUnit);
+
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt)
+        dvmCompilerApplyBackEndOptimizations(cUnit);
+#endif
 
 #if defined(WITH_SELF_VERIFICATION)
     selfVerificationBranchInsertPass(cUnit);

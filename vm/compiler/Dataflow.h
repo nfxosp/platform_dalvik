@@ -106,9 +106,17 @@ typedef struct SSARepresentation {
  * An induction variable is represented by "m*i + c", where i is a basic
  * induction variable.
  */
+
+#ifdef SWE_DVM_OPT
+#define DIV_CONST -1
+#endif
+
 typedef struct InductionVariableInfo {
     int ssaReg;
     int basicSSAReg;
+#ifdef SWE_DVM_OPT
+    int constSSAReg;
+#endif
     int m;      // multiplier
     int c;      // constant
     int inc;    // loop incriment
@@ -117,6 +125,9 @@ typedef struct InductionVariableInfo {
 typedef struct ArrayAccessInfo {
     int arrayReg;
     int ivReg;
+#ifdef SWE_DVM_OPT
+    int constReg;
+#endif
     int maxC;                   // For DIV - will affect upper bound checking
     int minC;                   // For DIV - will affect lower bound checking
 } ArrayAccessInfo;
