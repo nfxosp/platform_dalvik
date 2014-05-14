@@ -39,6 +39,10 @@ else
 endif
 host_smp_flag := -DANDROID_SMP=1
 
+# this should be removed at release
+ifeq ($(TARGET_BOARD_PLATFORM),exynos5)
+    include $(LOCAL_PATH)/SWEDvm.mk
+endif
 # Build the installed version (libdvm.so) first
 WITH_JIT := true
 include $(LOCAL_PATH)/ReconfigureDvm.mk

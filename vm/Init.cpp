@@ -1107,6 +1107,71 @@ static int processOptions(int argc, const char* const argv[],
             gDvm.lockProfThreshold = atoi(argv[i] + 20);
 
 #ifdef WITH_JIT
+#ifdef SWE_DVM_OPT
+        } else if (strncmp(argv[i], "-Xjit_ldrhoist:", 15) == 0) {
+            if (strcmp(argv[i]+15, "y") == 0) {
+                gDvmJit.ldrHoist = true;
+            } else if (strcmp(argv[i]+15, "n") == 0) {
+                gDvmJit.ldrHoist = false;
+            } else {
+                dvmFprintf(stderr, "Bad value for -Xjit_ldrhoist: '%s'\n",
+                    argv[i]+15);
+            }
+        } else if (strncmp(argv[i], "-Xjit_strsink:", 14) == 0) {
+            if (strcmp(argv[i]+14, "y") == 0) {
+                gDvmJit.strSink = true;
+            } else if (strcmp(argv[i]+14, "n") == 0) {
+                gDvmJit.strSink = false;
+            } else {
+                dvmFprintf(stderr, "Bad value for -Xjit_strsink: '%s'\n",
+                    argv[i]+14);
+            }
+        } else if (strncmp(argv[i], "-Xjit_licm:", 11) == 0) {
+            if (strcmp(argv[i]+11, "y") == 0) {
+                gDvmJit.licm = true;
+            } else if (strcmp(argv[i]+11, "n") == 0) {
+                gDvmJit.licm = false;
+            } else {
+                dvmFprintf(stderr, "Bad value for -Xjit_licm: '%s'\n",
+                    argv[i]+11);
+            }
+        } else if (strncmp(argv[i], "-Xjit_loopinv:", 14) == 0) {
+            if (strcmp(argv[i]+14, "y") == 0) {
+                gDvmJit.loopInverse = true;
+            } else if (strcmp(argv[i]+14, "n") == 0) {
+                gDvmJit.loopInverse = false;
+            } else {
+                dvmFprintf(stderr, "Bad value for -Xjit_loopinv: '%s'\n",
+                    argv[i]+14);
+            }
+        } else if (strncmp(argv[i], "-Xjit_pattern:", 14) == 0) {
+            if (strcmp(argv[i]+14, "y") == 0) {
+                gDvmJit.patternMatching = true;
+            } else if (strcmp(argv[i]+14, "n") == 0) {
+                gDvmJit.patternMatching = false;
+            } else {
+                dvmFprintf(stderr, "Bad value for -Xjit_pattern: '%s'\n",
+                    argv[i]+14);
+            }
+        } else if (strncmp(argv[i], "-Xjit_opt:", 10) == 0) {
+            if (strcmp(argv[i]+10, "y") == 0) {
+                gDvmJit.jitOpt = true;
+            } else if (strcmp(argv[i]+10, "n") == 0) {
+                gDvmJit.jitOpt = false;
+            } else {
+                dvmFprintf(stderr, "Bad value for -Xjit_opt: '%s'\n",
+                    argv[i]+10);
+            }
+        } else if (strncmp(argv[i], "-Xjit_dbg:", 10) == 0) {
+            if (strcmp(argv[i]+10, "y") == 0) {
+                gDvmJit.jitDebug = true;
+            } else if (strcmp(argv[i]+10, "n") == 0) {
+                gDvmJit.jitDebug = false;
+            } else {
+                dvmFprintf(stderr, "Bad value for -Xjit_dbg: '%s'\n",
+                    argv[i]+10);
+            }
+#endif
         } else if (strncmp(argv[i], "-Xjitop", 7) == 0) {
             processXjitop(argv[i]);
         } else if (strncmp(argv[i], "-Xjitmethod:", 12) == 0) {
@@ -1286,6 +1351,16 @@ static void setCommandLineDefaults()
 
     gDvm.constInit = false;
     gDvm.commonInit = false;
+#if defined(SWE_DVM_OPT)
+    gDvmJit.ldrHoist = true;
+    gDvmJit.strSink = true;
+    gDvmJit.licm = true;
+    gDvmJit.loopInverse = true;
+    gDvmJit.traceStrSink = false;
+    gDvmJit.patternMatching = true;
+    gDvmJit.jitOpt = true;
+    gDvmJit.jitDebug = false;
+#endif
 #else
     gDvm.executionMode = kExecutionModeInterpFast;
 #endif

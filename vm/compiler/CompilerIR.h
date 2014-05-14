@@ -140,6 +140,9 @@ typedef struct MIR {
         // Used by the inlined invoke to find the class and method pointers
         CallsiteInfo *callsiteInfo;
     } meta;
+#ifdef SWE_DVM_OPT
+    bool duplicated;
+#endif
 } MIR;
 
 struct BasicBlockDataFlow;
@@ -196,6 +199,16 @@ typedef enum AssemblerStatus {
     kRetryAll,
     kRetryHalve
 } AssemblerStatus;
+
+#ifdef SWE_DVM_OPT
+typedef struct BackEndOptInfo {
+    int perceivedSequence;
+    LIR *normalCodeBlockStartLIRInsn;
+    LIR *normalCodeBlockEndLIRInsn;
+    int normalCodeBlockCount;
+    int normalChainningBlockCount;
+} BackEndOptInfo;
+#endif
 
 typedef struct CompilationUnit {
     int numInsts;
@@ -278,6 +291,11 @@ typedef struct CompilationUnit {
     bool printSSANames;
     void *blockLabelList;
     bool quitLoopMode;                  // cold path/complex bytecode
+#ifdef SWE_DVM_OPT
+    bool hasSuspendPoll;
+    BackEndOptInfo backEndOptInfo;
+    int jitOptLevel;
+#endif
 } CompilationUnit;
 
 #if defined(WITH_SELF_VERIFICATION)

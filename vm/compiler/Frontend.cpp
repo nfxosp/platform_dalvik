@@ -1448,6 +1448,13 @@ static bool exhaustTrace(CompilationUnit *cUnit, BasicBlock *curBlock)
     return true;
 }
 
+#ifdef SWE_DVM_OPT
+__attribute__((weak)) void dvmCompilerSIMDOpt(CompilationUnit *cUnit)
+{
+    return;
+}
+#endif
+
 /* Compile a loop */
 static bool compileLoop(CompilationUnit *cUnit, unsigned int startOffset,
                         JitTraceDescription *desc, int numMaxInsts,
@@ -1578,6 +1585,11 @@ static bool compileLoop(CompilationUnit *cUnit, unsigned int startOffset,
         ALOGD("Loop trace @ offset %04x", cUnit->entryBlock->startOffset);
         dvmCompilerCodegenDump(cUnit);
     }
+
+#ifdef SWE_DVM_OPT
+    if (gDvmJit.jitOpt && gDvmJit.patternMatching)
+        dvmCompilerSIMDOpt(cUnit);
+#endif
 
     /*
      * If this trace uses class objects as constants,

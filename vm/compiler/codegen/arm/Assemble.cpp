@@ -847,11 +847,31 @@ ArmEncodingMap EncodingMap[kArmLast] = {
                  kFmtBitBlt, 15, 12,
                  IS_QUAD_OP | REG_DEF0 | REG_USE1 | REG_USE2 | REG_USE3,
                  "mla", "r!0d, r!1d, r!2d, r!3d", 2),
+#ifdef __ARM_ARCH_EXT_IDIV__
+    ENCODING_MAP(kThumb2MlsRRRR,  0xfb000010,
+                 kFmtBitBlt, 11, 8, kFmtBitBlt, 19, 16, kFmtBitBlt, 3, 0,
+                 kFmtBitBlt, 15, 12,
+                 IS_QUAD_OP | REG_DEF0 | REG_USE1 | REG_USE2 | REG_USE3,
+                 "mls", "r!0d, r!1d, r!2d, r!3d", 2),
+#endif
     ENCODING_MAP(kThumb2Umull,  0xfba00000,
                  kFmtBitBlt, 15, 12, kFmtBitBlt, 11, 8, kFmtBitBlt, 19, 16,
                  kFmtBitBlt, 3, 0,
                  IS_QUAD_OP | REG_DEF0 | REG_DEF1 | REG_USE2 | REG_USE3,
                  "umull", "r!0d, r!1d, r!2d, r!3d", 2),
+#ifdef __ARM_ARCH_EXT_IDIV__
+    ENCODING_MAP(kThumb2SdivRRR,  0xfb90f0f0,
+                 kFmtBitBlt, 11, 8, kFmtBitBlt, 19, 16, kFmtBitBlt, 3, 0,
+                 kFmtUnused, -1, -1,
+                 IS_TERTIARY_OP | REG_DEF0_USE12,
+                 "sdiv", "r!0d, r!1d, r!2d", 2),
+
+    ENCODING_MAP(kThumb2UdivRRR,  0xfbb0f0f0,
+                 kFmtBitBlt, 19, 16, kFmtBitBlt, 11, 8, kFmtBitBlt, 3, 0,
+                 kFmtUnused, -1, -1,
+                 IS_TERTIARY_OP | REG_DEF0 | REG_USE1 | REG_USE2,
+                 "udiv", "r!0d, r!1d, r!2d", 2),
+#endif
     ENCODING_MAP(kThumb2Ldrex,       0xe8500f00,
                  kFmtBitBlt, 15, 12, kFmtBitBlt, 19, 16, kFmtBitBlt, 7, 0,
                  kFmtUnused, -1, -1, IS_TERTIARY_OP | REG_DEF0_USE1 | IS_LOAD,
@@ -881,6 +901,12 @@ ArmEncodingMap EncodingMap[kArmLast] = {
                  kFmtUnused, -1, -1,
                  IS_BINARY_OP | REG_DEF0 | REG_USE_PC | IS_LOAD,
                  "ldr", "r!0d, [r15pc, -#!1d]", 2),
+#ifdef SWE_DVM_OPT
+    ENCODING_MAP(kThumb2Pld,         0xf890f000,
+                 kFmtBitBlt, 19, 16, kFmtBitBlt, 11, 0, kFmtUnused, -1, -1,
+                 kFmtUnused, -1, -1, IS_BINARY_OP | REG_USE0,
+                 "pld", "[r!0d, #!1d]", 2),
+#endif
     ENCODING_MAP(kThumb2RsbRRR,  0xebd00000, /* setflags encoding */
                  kFmtBitBlt, 11, 8, kFmtBitBlt, 19, 16, kFmtBitBlt, 3, 0,
                  kFmtShift, -1, -1,

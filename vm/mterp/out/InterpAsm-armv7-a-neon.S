@@ -4053,7 +4053,7 @@ dalvik_inst:
 /* ------------------------------ */
     .balign 64
 .L_OP_DIV_INT: /* 0x93 */
-/* File: armv5te/OP_DIV_INT.S */
+/* File: armv7-a/OP_DIV_INT.S */
 /* File: armv5te/binop.S */
     /*
      * Generic 32-bit binary operation.  Provide an "instr" line that
@@ -4084,7 +4084,13 @@ dalvik_inst:
 
     FETCH_ADVANCE_INST(2)               @ advance rPC, load rINST
                                @ optional op; may set condition codes
-    bl     __aeabi_idiv                              @ r0<- op, r0-r3 changed
+    
+#ifdef __ARM_ARCH_EXT_IDIV__
+    .inst 0xe710f110 /*sdiv    r0, r0, r1*/
+#else
+    bl     __aeabi_idiv
+#endif
+                              @ r0<- op, r0-r3 changed
     GET_INST_OPCODE(ip)                 @ extract opcode from rINST
     SET_VREG(r0, r9)               @ vAA<- r0
     GOTO_OPCODE(ip)                     @ jump to next instruction
@@ -4094,7 +4100,7 @@ dalvik_inst:
 /* ------------------------------ */
     .balign 64
 .L_OP_REM_INT: /* 0x94 */
-/* File: armv5te/OP_REM_INT.S */
+/* File: armv7-a/OP_REM_INT.S */
 /* idivmod returns quotient in r0 and remainder in r1 */
 /* File: armv5te/binop.S */
     /*
@@ -4126,7 +4132,14 @@ dalvik_inst:
 
     FETCH_ADVANCE_INST(2)               @ advance rPC, load rINST
                                @ optional op; may set condition codes
-    bl      __aeabi_idivmod                              @ r1<- op, r0-r3 changed
+    
+#ifdef __ARM_ARCH_EXT_IDIV__
+    .inst 0xe712f110 /*sdiv    r2, r0, r1*/
+    mls    r1, r1, r2, r0
+#else
+    bl      __aeabi_idivmod
+#endif
+                              @ r1<- op, r0-r3 changed
     GET_INST_OPCODE(ip)                 @ extract opcode from rINST
     SET_VREG(r1, r9)               @ vAA<- r1
     GOTO_OPCODE(ip)                     @ jump to next instruction
@@ -5259,7 +5272,7 @@ dalvik_inst:
 /* ------------------------------ */
     .balign 64
 .L_OP_DIV_INT_2ADDR: /* 0xb3 */
-/* File: armv6t2/OP_DIV_INT_2ADDR.S */
+/* File: armv7-a/OP_DIV_INT_2ADDR.S */
 /* File: armv6t2/binop2addr.S */
     /*
      * Generic 32-bit "/2addr" binary operation.  Provide an "instr" line
@@ -5287,7 +5300,13 @@ dalvik_inst:
     FETCH_ADVANCE_INST(1)               @ advance rPC, load rINST
 
                                @ optional op; may set condition codes
-    bl     __aeabi_idiv                              @ r0<- op, r0-r3 changed
+    
+#ifdef __ARM_ARCH_EXT_IDIV__
+   .inst 0xe710f110 /* sdiv    r0, r0, r1 */
+#else
+    bl     __aeabi_idiv
+#endif
+                              @ r0<- op, r0-r3 changed
     GET_INST_OPCODE(ip)                 @ extract opcode from rINST
     SET_VREG(r0, r9)               @ vAA<- r0
     GOTO_OPCODE(ip)                     @ jump to next instruction
@@ -5297,7 +5316,7 @@ dalvik_inst:
 /* ------------------------------ */
     .balign 64
 .L_OP_REM_INT_2ADDR: /* 0xb4 */
-/* File: armv6t2/OP_REM_INT_2ADDR.S */
+/* File: armv7-a/OP_REM_INT_2ADDR.S */
 /* idivmod returns quotient in r0 and remainder in r1 */
 /* File: armv6t2/binop2addr.S */
     /*
@@ -5326,7 +5345,14 @@ dalvik_inst:
     FETCH_ADVANCE_INST(1)               @ advance rPC, load rINST
 
                                @ optional op; may set condition codes
-    bl      __aeabi_idivmod                              @ r1<- op, r0-r3 changed
+    
+#ifdef __ARM_ARCH_EXT_IDIV__
+    .inst 0xe712f110 /*sdiv    r2, r0, r1*/
+    mls    r1, r1, r2, r0
+#else
+    bl      __aeabi_idivmod
+#endif
+                              @ r1<- op, r0-r3 changed
     GET_INST_OPCODE(ip)                 @ extract opcode from rINST
     SET_VREG(r1, r9)               @ vAA<- r1
     GOTO_OPCODE(ip)                     @ jump to next instruction
@@ -6364,7 +6390,7 @@ dalvik_inst:
 /* ------------------------------ */
     .balign 64
 .L_OP_DIV_INT_LIT16: /* 0xd3 */
-/* File: armv6t2/OP_DIV_INT_LIT16.S */
+/* File: armv7-a/OP_DIV_INT_LIT16.S */
 /* File: armv6t2/binopLit16.S */
     /*
      * Generic 32-bit "lit16" binary operation.  Provide an "instr" line
@@ -6389,7 +6415,13 @@ dalvik_inst:
     .endif
     FETCH_ADVANCE_INST(2)               @ advance rPC, load rINST
 
-    bl     __aeabi_idiv                              @ r0<- op, r0-r3 changed
+    
+#ifdef __ARM_ARCH_EXT_IDIV__
+    .inst 0xe710f110/* sdiv    r0, r0, r1 */
+#else
+    bl     __aeabi_idiv
+#endif
+                              @ r0<- op, r0-r3 changed
     GET_INST_OPCODE(ip)                 @ extract opcode from rINST
     SET_VREG(r0, r9)               @ vAA<- r0
     GOTO_OPCODE(ip)                     @ jump to next instruction
@@ -6399,7 +6431,7 @@ dalvik_inst:
 /* ------------------------------ */
     .balign 64
 .L_OP_REM_INT_LIT16: /* 0xd4 */
-/* File: armv6t2/OP_REM_INT_LIT16.S */
+/* File: armv7-a/OP_REM_INT_LIT16.S */
 /* idivmod returns quotient in r0 and remainder in r1 */
 /* File: armv6t2/binopLit16.S */
     /*
@@ -6425,7 +6457,14 @@ dalvik_inst:
     .endif
     FETCH_ADVANCE_INST(2)               @ advance rPC, load rINST
 
-    bl      __aeabi_idivmod                              @ r1<- op, r0-r3 changed
+    
+#ifdef __ARM_ARCH_EXT_IDIV__
+    .inst 0xe712f110 /*sdiv    r2, r0, r1*/
+    mls    r1, r1, r2, r0
+#else
+    bl      __aeabi_idivmod
+#endif
+                              @ r1<- op, r0-r3 changed
     GET_INST_OPCODE(ip)                 @ extract opcode from rINST
     SET_VREG(r1, r9)               @ vAA<- r1
     GOTO_OPCODE(ip)                     @ jump to next instruction
@@ -6655,7 +6694,7 @@ dalvik_inst:
 /* ------------------------------ */
     .balign 64
 .L_OP_DIV_INT_LIT8: /* 0xdb */
-/* File: armv5te/OP_DIV_INT_LIT8.S */
+/* File: armv7-a/OP_DIV_INT_LIT8.S */
 /* File: armv5te/binopLit8.S */
     /*
      * Generic 32-bit "lit8" binary operation.  Provide an "instr" line
@@ -6683,7 +6722,13 @@ dalvik_inst:
     FETCH_ADVANCE_INST(2)               @ advance rPC, load rINST
 
                                @ optional op; may set condition codes
-    bl     __aeabi_idiv                              @ r0<- op, r0-r3 changed
+    
+#ifdef __ARM_ARCH_EXT_IDIV__
+    .inst 0xe710f110 /*  sdiv    r0, r0, r1 */
+#else
+    bl     __aeabi_idiv
+#endif
+                              @ r0<- op, r0-r3 changed
     GET_INST_OPCODE(ip)                 @ extract opcode from rINST
     SET_VREG(r0, r9)               @ vAA<- r0
     GOTO_OPCODE(ip)                     @ jump to next instruction
@@ -6693,7 +6738,7 @@ dalvik_inst:
 /* ------------------------------ */
     .balign 64
 .L_OP_REM_INT_LIT8: /* 0xdc */
-/* File: armv5te/OP_REM_INT_LIT8.S */
+/* File: armv7-a/OP_REM_INT_LIT8.S */
 /* idivmod returns quotient in r0 and remainder in r1 */
 /* File: armv5te/binopLit8.S */
     /*
@@ -6722,7 +6767,14 @@ dalvik_inst:
     FETCH_ADVANCE_INST(2)               @ advance rPC, load rINST
 
                                @ optional op; may set condition codes
-    bl      __aeabi_idivmod                              @ r1<- op, r0-r3 changed
+    
+#ifdef __ARM_ARCH_EXT_IDIV__
+    .inst 0xe712f110 /*sdiv    r2, r0, r1*/
+    mls    r1, r1, r2, r0
+#else
+    bl      __aeabi_idivmod
+#endif
+                              @ r1<- op, r0-r3 changed
     GET_INST_OPCODE(ip)                 @ extract opcode from rINST
     SET_VREG(r1, r9)               @ vAA<- r1
     GOTO_OPCODE(ip)                     @ jump to next instruction

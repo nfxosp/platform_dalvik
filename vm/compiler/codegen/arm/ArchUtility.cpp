@@ -366,6 +366,9 @@ void dvmDumpLIRInsn(LIR *arg, unsigned char *baseAddr)
             break;
         case kArmPseudoTargetLabel:
         case kArmPseudoNormalBlockLabel:
+#ifdef SWE_DVM_OPT
+        case kArmPseudoBackEndOptTargetLabel:
+#endif
             ALOGD("L%p:", lir);
             break;
         default:

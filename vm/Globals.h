@@ -976,6 +976,17 @@ struct DvmJitGlobals {
     JitOptLevel        optLevel;
 #endif
 
+#if defined(SWE_DVM_OPT)
+    bool               jitOpt;
+    bool               ldrHoist;
+    bool               strSink;
+    bool               licm;
+    bool               loopInverse;
+    bool               traceStrSink;
+    bool               patternMatching;
+    bool               jitDebug;
+#endif
+
     /* Place arrays at the end to ease the display in gdb sessions */
 
     /* Work order queue for compilations */
